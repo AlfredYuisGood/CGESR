@@ -38,7 +38,6 @@ def aggregate_user(user_neighbors, item_i, scores):
     weighted_aggregation = scores[:, np.newaxis] * np.concatenate((relu(aggregated_user), relu(item_i)), axis=1)
     return relu(weighted_aggregation)
 
-
 # Generate session preference representation
 def generate_session_preference(item_i, item_neighbors, user_neighbors, scores):
     item_aggregation = aggregate_items(item_i, item_neighbors, scores["out"])
@@ -47,6 +46,10 @@ def generate_session_preference(item_i, item_neighbors, user_neighbors, scores):
     aggregated_representation = np.mean([item_aggregation, user_aggregation, input_aggregation], axis=0)
     return relu(aggregated_representation)
 
+# Softmax function
+def softmax(x):
+    e_x = np.exp(x - np.max(x, axis=1, keepdims=True))
+    return e_x / np.sum(e_x, axis=1, keepdims=True)
 
 def recommend_items(session_preference, items, labels, lambd):
     logits = np.dot(session_preference, items.T)
@@ -54,36 +57,13 @@ def recommend_items(session_preference, items, labels, lambd):
     
     # Calculate the loss
     loss = -np.sum(labels * np.log(probabilities) + (1 - labels) * np.log(1 - probabilities))
-    loss += lambd * calculate_additional_loss()
+    loss += lambd * loss  # Using the overall loss as mathcal{L}_{dis}
     
     return probabilities, loss
 
-
-
-# Softmax function
-def softmax(x):
-    e_x = np.exp(x - np.max(x))
-    return e_x / e_x.sum(axis=0)
-
-# Example usage
-item_i = np.random.rand(10)  # Example attribute vector for item i
-item_neighbors = np.random.rand(5, 10)  # Example attribute vectors for item neighbors
-user_neighbors = np.random.rand(3, 10)  # Example attribute vectors for user neighbors
-scores = {
-    "out": normalize_scores(np.random.rand(5)),  # Example similarity scores for outgoing neighbors
-    "user": normalize_scores(np.random.rand(3)),  # Example similarity scores for user neighbors
-    "in": normalize_scores(np.random.rand(5))  # Example similarity scores for input item neighbors
-}
-
-session_preference = generate_session_preference(item_i, item_neighbors, user_neighbors, scores)
-recommended_items = recommend_items(session_preference, item_neighbors)
-
-
-
-
-def evaluate(predictions, targets, k):
-    # Sort predictions and get top-k recommended items for each session
-    top_k_items = np.argsort(predictions, axis=1)[:, -k:]
+def evaluate(probabilities, targets, k):
+    # Sort probabilities and get top-k recommended items for each session
+    top_k_items = np.argsort(probabilities, axis=1)[:, -k:]
 
     num_sessions = targets.shape[0]
     recall_sum = 0
