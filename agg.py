@@ -1,3 +1,5 @@
+# This file includes aggregation over edge type
+
 import numpy as np
 
 # Compute similarity scores between adjacent items
