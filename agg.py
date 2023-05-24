@@ -57,7 +57,7 @@ def recommend_items(session_preference, items, labels, lambd):
     
     # Calculate the loss
     loss = -np.sum(labels * np.log(probabilities) + (1 - labels) * np.log(1 - probabilities))
-    loss += lambd * loss  # Using the overall loss as mathcal{L}_{dis}
+    loss += lambd * loss_dis  # Using the overall loss as mathcal{L}_{dis}
     
     return probabilities, loss
 
