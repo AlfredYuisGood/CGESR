@@ -3,8 +3,25 @@
 import numpy as np
 
 # Compute similarity scores between adjacent items
-def compute_similarity(item_i, item_j):
-    return np.dot(item_i, item_j)
+def compute_similarity(item_i, item_j, edge_type):
+    
+    # Perform similarity computation based on edge_type
+    if edge_type == "out":
+    # Compute similarity score for outgoing edges
+    score = compute_similarity(item_i, item_j)
+    
+    if edge_type == "user":
+    # Compute similarity score for user-related edges
+    score = compute_similarity(item_i, item_j)
+    
+    if edge_type == "in":
+    # Compute similarity score for incoming edges
+    score = compute_similarity(item_i, item_j)
+    else:
+        # Handle unsupported edge types
+        raise ValueError("Unsupported edge type: {}".format(edge_type))
+        
+    return score
 
 # Normalize similarity scores for outgoing neighbors
 def normalize_scores(scores):
@@ -13,14 +30,14 @@ def normalize_scores(scores):
 # Aggregation step for item representation
 def aggregate_items(item_i, item_neighbors, scores):
     aggregated_item = np.mean(item_neighbors, axis=0)
-    weighted_aggregation = scores[:, np.newaxis] * np.concatenate((aggregated_item, item_i), axis=1)
-    return np.maximum(0, weighted_aggregation)
+    weighted_aggregation = scores[:, np.newaxis] * np.concatenate((relu(aggregated_item), relu(item_i)), axis=1)
+    return relu(weighted_aggregation)
 
-# Aggregation step for user representation
 def aggregate_user(user_neighbors, item_i, scores):
     aggregated_user = np.mean(user_neighbors, axis=0)
-    weighted_aggregation = scores[:, np.newaxis] * np.concatenate((aggregated_user, item_i), axis=1)
-    return np.maximum(0, weighted_aggregation)
+    weighted_aggregation = scores[:, np.newaxis] * np.concatenate((relu(aggregated_user), relu(item_i)), axis=1)
+    return relu(weighted_aggregation)
+
 
 # Generate session preference representation
 def generate_session_preference(item_i, item_neighbors, user_neighbors, scores):
@@ -28,12 +45,20 @@ def generate_session_preference(item_i, item_neighbors, user_neighbors, scores):
     user_aggregation = aggregate_user(user_neighbors, item_i, scores["user"])
     input_aggregation = aggregate_items(item_i, item_neighbors, scores["in"])
     aggregated_representation = np.mean([item_aggregation, user_aggregation, input_aggregation], axis=0)
-    return aggregated_representation
+    return relu(aggregated_representation)
 
-# Make recommendations
-def recommend_items(session_preference, items):
-    probabilities = softmax(np.dot(session_preference, items.T))
-    return probabilities
+
+def recommend_items(session_preference, items, labels, lambd):
+    logits = np.dot(session_preference, items.T)
+    probabilities = softmax(logits)
+    
+    # Calculate the loss
+    loss = -np.sum(labels * np.log(probabilities) + (1 - labels) * np.log(1 - probabilities))
+    loss += lambd * calculate_additional_loss()
+    
+    return probabilities, loss
+
+
 
 # Softmax function
 def softmax(x):
@@ -54,7 +79,7 @@ session_preference = generate_session_preference(item_i, item_neighbors, user_ne
 recommended_items = recommend_items(session_preference, item_neighbors)
 
 
-import numpy as np
+
 
 def evaluate(predictions, targets, k):
     # Sort predictions and get top-k recommended items for each session
