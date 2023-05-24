@@ -1,4 +1,4 @@
-# This file includes aggregation over edge type
+# This file includes the demonstration of aggregation over edge type
 
 import numpy as np
 
