@@ -1,6 +1,5 @@
 # This file includes the demonstration of GRUs, attention score, softmask, and back-door adjustment
 
-
 import numpy as np
 import tensorflow as tf
 from tensorflow.keras import layers
@@ -76,7 +75,7 @@ loss_uniform = tf.keras.losses.kullback_leibler_divergence(y_uniform, E_G_e)
 loss_causal = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(y, z_G_prime))
 
 # Define the overall loss
-loss_dis = loss_supervised + loss_uniform + loss_causal
+loss = loss_supervised + loss_uniform + loss_causal
 
 # Create the optimizer
 optimizer = tf.keras.optimizers.Adam()
