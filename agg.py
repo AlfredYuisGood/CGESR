@@ -89,3 +89,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+# Save the generated session preference
+np.save("session_preference.npy", session_preference)
