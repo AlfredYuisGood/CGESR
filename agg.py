@@ -1,69 +1,40 @@
 # This file includes the demonstration of aggregation over edge type
-
 import numpy as np
+import argparse
 
-# Compute similarity scores between adjacent items
-def compute_similarity(item_i, item_j, edge_type):
-    
-    # Perform similarity computation based on edge_type
-    if edge_type == "out":
-    # Compute similarity score for outgoing edges
-    score = compute_similarity(item_i, item_j)
-    
-    if edge_type == "user":
-    # Compute similarity score for user-related edges
-    score = compute_similarity(item_i, item_j)
-    
-    if edge_type == "in":
-    # Compute similarity score for incoming edges
-    score = compute_similarity(item_i, item_j)
-    else:
-        # Handle unsupported edge types
-        raise ValueError("Unsupported edge type: {}".format(edge_type))
-        
-    return score
+def compute_similarity(item_i, item_j):
+    return np.dot(item_i, item_j)
 
-# Normalize similarity scores for outgoing neighbors
 def normalize_scores(scores):
     return scores / np.sum(scores)
 
-# Aggregation step for item representation
 def aggregate_items(item_i, item_neighbors, scores):
     aggregated_item = np.mean(item_neighbors, axis=0)
-    weighted_aggregation = scores[:, np.newaxis] * np.concatenate((relu(aggregated_item), relu(item_i)), axis=1)
-    return relu(weighted_aggregation)
+    weighted_aggregation = scores[:, np.newaxis] * np.concatenate((aggregated_item, item_i), axis=1)
+    return np.maximum(0, weighted_aggregation)
 
 def aggregate_user(user_neighbors, item_i, scores):
     aggregated_user = np.mean(user_neighbors, axis=0)
-    weighted_aggregation = scores[:, np.newaxis] * np.concatenate((relu(aggregated_user), relu(item_i)), axis=1)
-    return relu(weighted_aggregation)
+    weighted_aggregation = scores[:, np.newaxis] * np.concatenate((aggregated_user, item_i), axis=1)
+    return np.maximum(0, weighted_aggregation)
 
-# Generate session preference representation
 def generate_session_preference(item_i, item_neighbors, user_neighbors, scores):
     item_aggregation = aggregate_items(item_i, item_neighbors, scores["out"])
     user_aggregation = aggregate_user(user_neighbors, item_i, scores["user"])
     input_aggregation = aggregate_items(item_i, item_neighbors, scores["in"])
     aggregated_representation = np.mean([item_aggregation, user_aggregation, input_aggregation], axis=0)
-    return relu(aggregated_representation)
+    return aggregated_representation
 
-# Softmax function
+def recommend_items(session_preference, items):
+    probabilities = softmax(np.dot(session_preference, items.T))
+    return probabilities
+
 def softmax(x):
-    e_x = np.exp(x - np.max(x, axis=1, keepdims=True))
-    return e_x / np.sum(e_x, axis=1, keepdims=True)
+    e_x = np.exp(x - np.max(x))
+    return e_x / e_x.sum(axis=0)
 
-def recommend_items(session_preference, items, labels, lambd):
-    logits = np.dot(session_preference, items.T)
-    probabilities = softmax(logits)
-    
-    # Calculate the loss
-    loss = -np.sum(labels * np.log(probabilities) + (1 - labels) * np.log(1 - probabilities))
-    loss += lambd * loss_dis  # Using the overall loss as mathcal{L}_{dis}
-    
-    return probabilities, loss
-
-def evaluate(probabilities, targets, k):
-    # Sort probabilities and get top-k recommended items for each session
-    top_k_items = np.argsort(probabilities, axis=1)[:, -k:]
+def evaluate(predictions, targets, k):
+    top_k_items = np.argsort(predictions, axis=1)[:, -k:]
 
     num_sessions = targets.shape[0]
     recall_sum = 0
@@ -71,18 +42,14 @@ def evaluate(probabilities, targets, k):
     mrr_sum = 0
 
     for i in range(num_sessions):
-        # Get the true positive items for the session
         true_positives = np.where(targets[i] == 1)[0]
 
-        # Compute Recall@K
         recall = len(set(true_positives) & set(top_k_items[i])) / len(true_positives)
         recall_sum += recall
 
-        # Compute Precision@K
         precision = len(set(true_positives) & set(top_k_items[i])) / k
         precision_sum += precision
 
-        # Compute MRR@K
         mrr = 0
         for j, item in enumerate(top_k_items[i]):
             if item in true_positives:
@@ -90,9 +57,35 @@ def evaluate(probabilities, targets, k):
                 break
         mrr_sum += mrr
 
-    # Calculate average metrics
     recall_at_k = recall_sum / num_sessions
     precision_at_k = precision_sum / num_sessions
     mrr_at_k = mrr_sum / num_sessions
 
     return recall_at_k, precision_at_k, mrr_at_k
+
+def main():
+    parser = argparse.ArgumentParser(description="Evaluate recommendation performance.")
+    parser.add_argument("--k", type=int, default=10, help="Top-k for recall, precision, and MRR")
+    args = parser.parse_args()
+
+    item_i = np.random.rand(10)
+    item_neighbors = np.random.rand(5, 10)
+    user_neighbors = np.random.rand(3, 10)
+    scores = {
+        "out": normalize_scores(np.random.rand(5)),
+        "user": normalize_scores(np.random.rand(3)),
+        "in": normalize_scores(np.random.rand(5))
+    }
+
+    session_preference = generate_session_preference(item_i, item_neighbors, user_neighbors, scores)
+    recommended_items = recommend_items(session_preference, item_neighbors)
+
+    targets = np.random.randint(2, size=recommended_items.shape)
+    recall, precision, mrr = evaluate(recommended_items, targets, args.k)
+    
+    print(f"Recall@{args.k}: {recall:.4f}")
+    print(f"Precision@{args.k}: {precision:.4f}")
+    print(f"MRR@{args.k}: {mrr:.4f}")
+
+if __name__ == "__main__":
+    main()
