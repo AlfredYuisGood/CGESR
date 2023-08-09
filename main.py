@@ -44,6 +44,13 @@ def backdoor_adjustment(E_G_i, E_G_e):
 d = 128
 T = 10
 
+# Load the saved session preference from Part 1
+loaded_session_preference = np.load("session_preference.npy")
+
+# Replace placeholder X with loaded_session_preference
+X = loaded_session_preference
+
+
 # Generate some sample data
 X = np.random.randn(100, T, d)
 A = np.random.randint(2, size=(100, 100))
