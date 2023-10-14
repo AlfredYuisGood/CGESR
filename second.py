@@ -1,6 +1,9 @@
 # This file includes the demonstration of aggregation over edge type
 import numpy as np
 import argparse
+import causal_distillation_model  # Import your model
+
+parser.add_argument("--k_values", type=int, nargs='+', default=[10, 20, 30], help="List of top-k values for recall, precision, and MRR")
 
 def compute_similarity(item_i, item_j):
     return np.dot(item_i, item_j)
@@ -65,7 +68,7 @@ def evaluate(predictions, targets, k):
 
 def main():
     parser = argparse.ArgumentParser(description="Evaluate recommendation performance.")
-    parser.add_argument("--k", type=int, default=10, help="Top-k for recall, precision, and MRR")
+    parser.add_argument("--k_values", type=int, nargs='+', default=[10, 20, 30], help="List of top-k values for recall, precision, and MRR")
     args = parser.parse_args()
 
     item_i = np.random.rand(10)
@@ -81,14 +84,16 @@ def main():
     recommended_items = recommend_items(session_preference, item_neighbors)
 
     targets = np.random.randint(2, size=recommended_items.shape)
-    recall, precision, mrr = evaluate(recommended_items, targets, args.k)
-    
-    print(f"Recall@{args.k}: {recall:.4f}")
-    print(f"Precision@{args.k}: {precision:.4f}")
-    print(f"MRR@{args.k}: {mrr:.4f}")
+
+    for k in args.k_values:
+        recall, precision, mrr = evaluate(recommended_items, targets, k)
+        print(f"Results for k={k}:")
+        print(f"Recall@{k}: {recall:.4f}")
+        print(f"Precision@{k}: {precision:.4f}")
+        print(f"MRR@{k}: {mrr:.4f}")
 
 if __name__ == "__main__":
     main()
 
-# Save the generated session preference
-np.save("session_preference.npy", session_preference)
+
+# python second.py --k_values 10 20 30
